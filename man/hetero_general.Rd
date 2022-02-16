@@ -9,25 +9,24 @@ Performs the Bayesian fitting of Heterocedastic Spatial General Model with norma
 %%  ~~ A concise (1-5 lines) description of what the function does. ~~
 }
 \usage{
-hetero_general(y,X,Z, W1,W2=NULL, nsim, burn, step, b_pri, B_pri,g_pri,G_pri, beta_0,
-               gammas_0, rho_0, lambda_0, kernel = NULL,
-               plot = TRUE,mateq=TRUE)
+hetero_general(formulamean,formulavar,data,W1,W2=NULL,nsim,burn,step,prior,initial,
+               kernel="normal",mateq=TRUE,seed=0,impacts=TRUE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{y}{ Object of class matrix, with the dependent variable
+  \item{formulamean}{ Object of class formula with the description of the model to be fitted for the mean.
 %%     ~~Describe \code{y} here~~
 }
-  \item{X}{ Object of class matrix, with covariates of mean model
+  \item{formulavar}{ Object of class formula with the description of the model to be fitted for the variance.
+%%     ~~Describe \code{y} here~~
+}
+  \item{data}{ Data frame object with covariates of model
 %%     ~~Describe \code{X} here~~
 }
-  \item{Z}{ Object of class matrix, with covariates of dispersion model
-%%     ~~Describe \code{X} here~~
-}
-  \item{W1}{ Object of class matrix, nb or listw related to response variable Spatial Contiguity Matrix, Anselin(1988)
+  \item{W1}{ Object of class matrix, nb or listw related to Spatial Contiguity Matrix for response variable, Anselin(1988)
 %%     ~~Describe \code{W} here~~
 }
-  \item{W2}{ Object of class matrix, nb or listw related to error term Spatial Contiguity Matrix, Anselin(1988). It's NULL by default.
+  \item{W2}{ Object of class matrix, nb or listw related to Spatial Contiguity Matrix for disturbance terms, Anselin(1988)
 %%     ~~Describe \code{W} here~~
 }
   \item{nsim}{
@@ -42,46 +41,25 @@ hetero_general(y,X,Z, W1,W2=NULL, nsim, burn, step, b_pri, B_pri,g_pri,G_pri, be
 %%     ~~Describe \code{step} here~~
 A number that indicates the length between samples in chain that generate the point estimates for each parameter.
 }
-  \item{b_pri}{
-%%     ~~Describe \code{b_pri} here~~
-A vector with the prior mean of beta
-}
-  \item{B_pri}{
-%%     ~~Describe \code{B_pri} here~~
-A matrix with the prior variance of beta
-}
-\item{g_pri}{
-A vector with the prior mean of gamma
-}
-\item{G_pri}{
-A vector with the prior variance of gamma
-}
-  \item{beta_0}{
-%%     ~~Describe \code{beta_0} here~~
-A vector with start values for beta chain
-}
-  \item{gammas_0}{
-%%     ~~Describe \code{sigma2_0} here~~
-A number with start value for gamma chain
-}
-\item{rho_0}{
-%%     ~~Describe \code{rho_0} here~~
-A number with start value for rho chain
-}
-  \item{lambda_0}{
-%%     ~~Describe \code{rho_0} here~~
-A number with start value for lambda chain
-}
+  \item{prior}{
+  List with prior distributions of the parameters in the hom_sem model
+  }
+  \item{initial}{
+  List with the initial values for the chains of each the parameters of the hom_sem model
+  }
   \item{kernel}{
 %%     ~~Describe \code{kernel} here~~
-Distribution used in transition kernel to get samples of rho and lambda, it can be  "uniform" or "normal"
-}
-  \item{plot}{
-%%     ~~Describe \code{plot} here~~
-If it is TRUE present the graph of the chains
+Distribution used in transition kernel to get samples of lambda, it can be  "uniform" or "normal"
 }
 \item{mateq}{
-Logical variable indicating whether W1=W2 or not.
+Logical variable indicating whether W1=w2 or not.
+}
+  \item{impacts}{
+%%     ~~Describe \code{kernel} here~~
+If impacts=TRUE then impacts for the model are computed, as suggested in Le Sage and Pace (2009).
+}
+\item{seed}{
+Random seed for generating the samples of the posterior distributions.
 }
 }
 \details{
@@ -95,19 +73,11 @@ hetero_general is a function made in order to fit Spatial General Model with a n
 %%  \item{comp2 }{Description of 'comp2'}
 %% ...
 List with the following:
-\item{Bestimado}{Estimated coefficients of beta}
-\item{Gammaest}{Estimated coefficient of gamma}
-\item{Rhoest}{Estimated coefficient of rho}
-\item{Lambdaest}{Estimated coefficient of lambda}
-\item{DesvBeta}{Estimated standard deviations of beta}
-\item{DesvGamma}{Estimated standard deviation of gamma}
-\item{DesvRho}{Estimated standard deviation of rho}
-\item{DesvLambda}{Estimated standard deviation of lambda}
-\item{AccRate1}{Acceptance Rate for samples of gamma}
-\item{AccRate2}{Acceptance Rate for samples of rho}
-\item{AccRate3}{Acceptance Rate for samples of lambda}
-\item{BIC}{Value of Bayesian Information Criterion}
-\item{DIC}{Value of Deviance Information Criterion}
+\item{summary}{Data frame with summary statistics of the marginal posterior distributions of the parameters of the model}
+\item{Acceptance_Rate}{Acceptance rate for the samples of rho, lambda and gamma.}
+\item{Criteria}{List with values of both the Bayesian Information Criterion (BIC) and the Deviance Information Criterion (DIC)}
+\item{chains}{Object of class mcmc with the samples of the marginal posterior distribution of each of the parameters of the model}
+\item{impacts}{Summary of the impacts for each explanatory variable of the model}
 }
 \references{
 %% ~put references to the literature/web site here ~
@@ -132,9 +102,7 @@ Jorge  Sicacha-Parada <jasicachap@unal.edu.co>, Edilberto Cepeda-Cuervo <ecepeda
 %% ~Make other sections like Warning with \section{Warning }{....} ~
 
 \examples{
-library(spdep)
-library(mvtnorm)
-library(pscl)
+data(oldcol)
 n=49
 x0=rep(1,n)
 x1=runif(n,0,400)
@@ -144,22 +112,25 @@ X=cbind(x0,x1,x2)
 Z=cbind(x0,x1,x3)
 gammas=c(-8,0.026,-0.4)
 Sigma=diag(c(exp(Z\%*\%gammas)))
-data(oldcol)
 W1=COL.nb
 matstand=nb2mat(W1)
 A=diag(n)-0.70*matstand
 B=diag(n)-0.20*matstand
-miu=solve(A)\%*\%(-35+0.35*x1-1.7*x2)
+mu=solve(A)\%*\%(-35+0.35*x1-1.7*x2)
 Sigma2=t(solve(A)\%*\%solve(B))\%*\%Sigma\%*\%solve(A)\%*\%solve(B)
-y=rmvnorm(1,miu,Sigma2)
-y_1=t(y)
-y=y_1
-data(oldcol)
-W1=COL.nb
-hetero_general(y,X,Z,W1=W1,nsim=500,burn=25,step=5,b_pri=rep(0,3),B_pri=diag(rep(1000,3)),
-g_pri=rep(0,3),G_pri=diag(rep(1000,3)),
-beta_0=rep(0,3),gammas_0=c(10,0,0),rho_0=0.5,lambda_0=0.5,
-kernel="normal",plot="FALSE",mateq="TRUE")
+y=t(rmvnorm(1,mu,Sigma2))
+
+
+formulamean <- y ~ x0 + x1 + x2
+formulavar <-  ~ x0 + x1 + x3
+data <- data.frame(y=y,x0=x0,x1=x1,x2=x2,x3=x3)
+prior <- list(b_pri=rep(0,3),B_pri=diag(rep(1000,3)),
+              g_pri=rep(0,3),G_pri=diag(rep(1000,3)))
+initial <- list(beta_0=rep(0,3),gamma_0=c(0,0,0),rho_0=0.5,lambda_0=0.5)
+hetero_general(formulamean=formulamean,formulavar=formulavar,data=data,W1=W1,
+               nsim=500,burn=25,step=5,prior=prior,initial=initial,
+               kernel="normal",mateq=TRUE)
+
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.

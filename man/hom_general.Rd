@@ -9,16 +9,15 @@ Performs the Bayesian fitting of Homoscedastic General Model with normal error t
 %%  ~~ A concise (1-5 lines) description of what the function does. ~~
 }
 \usage{
-hom_general(y, X, W1, W2=NULL, nsim, burn, step, b_pri, B_pri, r_pri, lambda_pri, beta_0,
-sigma2_0, rho_0, lambda_0, kernel = NULL,
-plot = TRUE, mateq=TRUE)
+hom_general(formula, data,W1,W2=NULL, nsim, burn, step,prior,
+            initial, kernel = "normal",mateq=TRUE,impacts=TRUE,seed=0)
 }
-%- maybe also 'usage' for other objects documented here.
+
 \arguments{
-  \item{y}{ Object of class matrix, with the dependent variable
+  \item{formula}{ Object of class formula with the description of the model to be fitted.
 %%     ~~Describe \code{y} here~~
 }
-  \item{X}{ Object of class matrix, with covariates of model
+  \item{data}{ Data frame object with covariates of model
 %%     ~~Describe \code{X} here~~
 }
   \item{W1}{ Object of class matrix, nb or listw related to Spatial Contiguity Matrix for response variable, Anselin(1988)
@@ -39,52 +38,28 @@ plot = TRUE, mateq=TRUE)
 %%     ~~Describe \code{step} here~~
 A number that indicates the length between samples in chain that generate the point estimates for each parameter.
 }
-  \item{b_pri}{
-%%     ~~Describe \code{b_pri} here~~
-A vector with the prior mean of beta
-}
-  \item{B_pri}{
-%%     ~~Describe \code{B_pri} here~~
-A matrix with the prior variance of beta
-}
-  \item{r_pri}{
-%%     ~~Describe \code{r_pri} here~~
-A number with the prior shape parameter of sigma^2
-}
-  \item{lambda_pri}{
-%%     ~~Describe \code{lambda_pri} here~~
-A number with the prior rate parameter of sigma^2
-}
-  \item{beta_0}{
-%%     ~~Describe \code{beta_0} here~~
-A vector with start values for beta chain
-}
-  \item{sigma2_0}{
-%%     ~~Describe \code{sigma2_0} here~~
-A number with start value for sigma^2 chain
-}
-
-  \item{rho_0}{
-%%     ~~Describe \code{sigma2_0} here~~
-A number with start value for rho chain
-}
-
-  \item{lambda_0}{
-%%     ~~Describe \code{rho_0} here~~
-A number with start value for lambda chain
-}
+  \item{prior}{
+  List with prior distributions of the parameters in the hom_sem model
+  }
+  \item{initial}{
+  List with the initial values for the chains of each the parameters of the hom_sem model
+  }
   \item{kernel}{
 %%     ~~Describe \code{kernel} here~~
-Distribution used in transition kernel to get samples of rho and lambda, it can be  "uniform" or "normal"
-}
-  \item{plot}{
-%%     ~~Describe \code{plot} here~~
-If it is TRUE present the graph of the chains
+Distribution used in transition kernel to get samples of lambda, it can be  "uniform" or "normal"
 }
 \item{mateq}{
 Logical variable indicating whether W1=w2 or not.
 }
+  \item{impacts}{
+%%     ~~Describe \code{kernel} here~~
+If impacts=TRUE then impacts for the model are computed, as suggested in Le Sage and Pace (2009).
 }
+\item{seed}{
+Random seed for generating the samples of the posterior distributions.
+}
+}
+
 \details{
 %%  ~~ If necessary, more details than the description above ~~
 hom_general is a function made in order to fit Spatial General Model with a normal homoscedatic disturbance term through MCMC methods as Metropolis-Hastings algorithm, under two proposals for trasition kernel to get samples of spatial responde and error lag parameters, rho and lambda, respectively.
@@ -96,18 +71,11 @@ hom_general is a function made in order to fit Spatial General Model with a norm
 %%  \item{comp2 }{Description of 'comp2'}
 %% ...
 List with the following:
-\item{Bestimado}{Estimated coefficients of beta}
-\item{Sigma2est}{Estimated coefficient of sigma^2}
-\item{Rhoest}{Estimated coefficient of rho}
-\item{Lambdaest}{Estimated coefficient 1of lambda}
-\item{DesvBeta}{Estimated standard deviations of beta}
-\item{DesvGamma}{Estimated standard deviation of gamma}
-\item{DesvRho}{Estimated standard deviation of rho}
-\item{DesvLambda}{Estimated standard deviation of lambda}
-\item{AccRate1}{Acceptance Rate for samples of rho}
-\item{AccRate2}{Acceptance Rate for samples of lambda}
-\item{BIC}{Value of Bayesian Information Criterion}
-\item{DIC}{Value of Deviance Information Criterion}
+\item{summary}{Data frame with summary statistics of the marginal posterior distributions of the parameters of the model}
+\item{Acceptance_Rate}{Acceptance rate for the samples of rho and lambda}
+\item{Criteria}{List with values of both the Bayesian Information Criterion (BIC) and the Deviance Information Criterion (DIC)}
+\item{chains}{Object of class mcmc with the samples of the marginal posterior distribution of each of the parameters of the model}
+\item{impacts}{Summary of the impacts for each explanatory variable of the model}
 }
 \references{
 %% ~put references to the literature/web site here ~
@@ -134,9 +102,7 @@ Jorge  Sicacha-Parada <jasicachap@unal.edu.co>, Edilberto Cepeda-Cuervo <ecepeda
 
 \examples{
 
-library(spdep)
-library(mvtnorm)
-library(pscl)
+data(oldcol)
 n=49
 x0=rep(1,n)
 x1=runif(n,0,400)
@@ -144,21 +110,23 @@ x2=runif(n,10,23)
 X=cbind(x0,x1,x2)
 sigma2=rep(45,n)
 Sigma=diag(sigma2)
-data(oldcol)
 W1=COL.nb
 matstand=nb2mat(W1)
 A=diag(n)-0.75*matstand
 B=diag(n)-0.20*matstand
 miu=solve(A)\%*\%(18+0.026*x1-0.4*x2)
 Sigma2=t(solve(A)\%*\%solve(B))\%*\%Sigma\%*\%solve(A)\%*\%solve(B)
-y=rmvnorm(1,miu,Sigma2)
-y_1=t(y)
-y=y_1
-data(oldcol)
-hom_general(y,X,W1=COL.nb,nsim=500,burn=25,step=5,b_pri=rep(0,3),B_pri=diag(rep(1000,3)),
-r_pri=0.01,lambda_pri=0.01,beta_0=rep(0,3),
-sigma2_0=90,rho_0=0.5,lambda_0=0.5,kernel="normal",
-plot=FALSE,mateq=TRUE)
+y=t(rmvnorm(1,miu,Sigma2))
+
+formula <- y ~ x0 + x1 + x2
+data <- data.frame(y=y,x0=x0,x1=x1,x2=x2)
+prior <- list(b_pri=rep(0,3),B_pri=diag(rep(1000,3)),
+              r_pri=0.01,lambda_pri=0.01)
+initial <- list(beta_0=rep(0,3),
+                sigma2_0=90,rho_0=0.5,lambda_0=0.5)
+hom_general(formula=formula,data=data,W1=COL.nb,nsim=500,burn=25,step=5,
+              prior=prior,initial=initial,kernel="normal",mateq=TRUE)
+
 
 }
 
